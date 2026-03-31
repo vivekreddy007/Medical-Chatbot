@@ -2,7 +2,6 @@ import os
 import json
 import base64
 from mimetypes import guess_type
-from pydantic import BaseModel
 
 from typing import TypedDict
 from langchain_core.output_parsers import JsonOutputParser
@@ -28,11 +27,11 @@ class ImageClassifier:
 
         with open(image_path, "rb") as image_file:
             base64_encoded_data=base64.b64encode(image_file.read()).decode("utf-8")
-        return f"data:{mime_type},base64,{base64_encoded_data}"
+        return f"data:{mime_type};base64,{base64_encoded_data}"
     
     def classify_image(self,image_path:str)->str:
         """Analyze the image to classify it as a medical image and determine its type."""
-        print(f"[ImageAnalyzer] Analyzing image:{image_path}")
+        print(f"[ImageAnalyzer] Analyzing image: {image_path}")
         vision_prompt=[
             {"role":"system","content":  "You are an expert in medical imaging. Analyze the uploaded image."},
             {"role": "user","content":[{
@@ -58,7 +57,7 @@ class ImageClassifier:
             return response_json #This will return a dictionary instead of a string
         except json.JSONDecodeError:
             print("[ImageAnalyzer] warning : Response was not valid JSON")
-            return {"image_type" : "JSON","reasoning":"INVALID JSON response","confidence":0.0}
+            return {"image_type": "unknown", "reasoning": "Invalid JSON response", "confidence": 0.0}
         
 
 

@@ -1,3 +1,7 @@
+# Modified from the original Multi-Agent-Medical-Assistant project
+# Original: https://github.com/Souvik-Majumder/Multi-Agent-Medical-Assistant
+# Licensed under Apache License 2.0
+
 """
 Agent Decision System for Multi-Agent Medical Chatbot
 

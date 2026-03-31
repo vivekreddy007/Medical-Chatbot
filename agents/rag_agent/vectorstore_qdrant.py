@@ -33,7 +33,7 @@ class VectorStore:
             collection_names=[collection.name for collection in collection_info.collections]
             return self.collection_name in collection_names
         except Exception as e:
-            self.logger.error(f"Error chcking for collection existence: {e}")
+            self.logger.error(f"Error checking for collection existence: {e}")
             return False
     
     def _create_collection(self):
@@ -42,7 +42,7 @@ class VectorStore:
             self.client.create_collection(
                 collection_name=self.collection_name,
                 vectors_config={"dense": VectorParams(size=self.embedding_dim,distance=Distance.COSINE)},
-                sparse_vectors_config={"sparse":SparseVectorParams(index=models.SparseIndexParams(on_disck=False))}
+                sparse_vectors_config={"sparse": SparseVectorParams(index=models.SparseIndexParams(on_disk=False))}
             )
             self.logger.info(f"Created new Collection: {self.collection_name}")
         except Exception as e:
@@ -69,7 +69,8 @@ class VectorStore:
             embedding=self.embedding_model,
             sparse_embedding=sparse_embeddings,
             retrieval_mode=RetrievalMode.HYBRID,
-            sparse_vector_name="sparse"
+            vector_name="dense",
+            sparse_vector_name="sparse",
         )
 
         #Document storage
@@ -135,7 +136,9 @@ class VectorStore:
         encoded_chunks=[chunk.encode("utf-8") for chunk in document_chunks]
         docstore.mset(list(zip(doc_ids,encoded_chunks)))
 
-    def retrieve_relevant_chunks(self,query:str,vectorstore:QdrantVectorStore,docstore:LocalFileStore)->Tuple[List[Dict[str,Any]], List[str]]:
+        return qdrant_vectorstore, docstore, doc_ids
+
+    def retrieve_relevant_chunks(self,query:str,vectorstore:QdrantVectorStore,docstore:LocalFileStore)->List[Dict[str,Any]]:
         """
         Retrieve relevant chunks based on a query.
         
