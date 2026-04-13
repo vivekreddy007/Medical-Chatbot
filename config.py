@@ -75,8 +75,9 @@ class MedicalCVConfig:
 
 class SpeechConfig:
     def __init__(self):
-        self.eleven_labs_api_key = os.getenv("ELEVEN_LABS_API_KEY")
-        self.eleven_labs_voice_id = "21m00Tcm4TlvDq8ikWAM"
+        self.tts_model = "tts-1"
+        self.tts_voice = "alloy"  # options: alloy, echo, fable, onyx, nova, shimmer
+        self.stt_model = "whisper-1"
 
 
 class ValidationConfig:

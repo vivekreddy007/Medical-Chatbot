@@ -24,8 +24,8 @@ docling>=2.31.0
 # Web Search
 tavily-python
 
-# Speech
-elevenlabs>=1.54.0
+# Speech (OpenAI Whisper STT + TTS)
+openai>=1.30.0
 pydub>=0.25.1
 ffmpeg-python>=0.2.0
 

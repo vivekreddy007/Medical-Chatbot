@@ -14,10 +14,10 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 import uvicorn
-import requests
+from openai import OpenAI
 from werkzeug.utils import secure_filename
+
 from pydub import AudioSegment
-from elevenlabs.client import ElevenLabs
 
 from config import Config
 from agents.agent_decision import process_query
@@ -41,7 +41,7 @@ app.mount("/data", StaticFiles(directory="data"), name="data")
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 templates = Jinja2Templates(directory="templates")
 
-elevenlabs_client = ElevenLabs(api_key=config.speech.eleven_labs_api_key)
+openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg"}
 
@@ -190,10 +190,9 @@ async def transcribe_audio(request: Request, audio: UploadFile = File(...)):
     try:
         AudioSegment.from_file(temp_webm).export(mp3_path, format="mp3")
         with open(mp3_path, "rb") as f:
-            audio_data = f.read()
-        transcription = elevenlabs_client.speech_to_text.convert(
-            file=audio_data, model_id="scribe_v1", tag_audio_events=True, language_code="eng", diarize=True
-        )
+            transcription = openai_client.audio.transcriptions.create(
+                model="whisper-1", file=f, language="en"
+            )
         for p in [temp_webm, mp3_path]:
             try:
                 os.remove(p)
@@ -211,17 +210,16 @@ async def transcribe_audio(request: Request, audio: UploadFile = File(...)):
 async def generate_speech(request: Request, body: SpeechRequest):
     if not body.text:
         return JSONResponse(status_code=400, content={"error": "Text is required"})
-    url = f"https://api.elevenlabs.io/v1/text-to-speech/{body.voice_id}/stream"
-    headers = {"Accept": "audio/mpeg", "Content-Type": "application/json", "xi-api-key": config.speech.eleven_labs_api_key}
-    payload = {"text": body.text, "model_id": "eleven_monolingual_v1", "voice_settings": {"stability": 0.5, "similarity_boost": 0.5}}
-    r = requests.post(url, headers=headers, json=payload)
-    if r.status_code != 200:
-        return JSONResponse(status_code=500, content={"error": f"ElevenLabs error: {r.status_code}"})
-    os.makedirs(SPEECH_DIR, exist_ok=True)
-    audio_path = f"./{SPEECH_DIR}/{uuid.uuid4()}.mp3"
-    with open(audio_path, "wb") as f:
-        f.write(r.content)
-    return FileResponse(path=audio_path, media_type="audio/mpeg", filename="speech.mp3")
+    try:
+        os.makedirs(SPEECH_DIR, exist_ok=True)
+        audio_path = f"./{SPEECH_DIR}/{uuid.uuid4()}.mp3"
+        response = openai_client.audio.speech.create(
+            model="tts-1", voice="alloy", input=body.text
+        )
+        response.stream_to_file(audio_path)
+        return FileResponse(path=audio_path, media_type="audio/mpeg", filename="speech.mp3")
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
 
 
 @app.exception_handler(413)
