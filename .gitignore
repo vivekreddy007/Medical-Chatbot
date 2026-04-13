@@ -51,3 +51,7 @@ data/parsed_docs/*
 # Dev scratch files
 roughwork.py
 rough_tavily.py
+
+# Brain tumor output
+uploads/brain_tumor_output/*
+!uploads/brain_tumor_output/.gitkeep

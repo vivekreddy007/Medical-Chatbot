@@ -39,7 +39,6 @@ config = Config()
 memory = MemorySaver()
 
 # Specify a thread
-thread_config = {"configurable": {"thread_id": "1"}}
 
 
 # Agent that takes the decision of routing the request further to correct task specific agent
@@ -454,15 +453,22 @@ def create_agent_graph():
     
     def run_brain_tumor_agent(state: AgentState) -> AgentState:
         """Handle brain MRI image analysis."""
+        current_input = state["current_input"]
+        image_path = current_input.get("image", None)
 
         print(f"Selected agent: BRAIN_TUMOR_AGENT")
 
-        response = AIMessage(content="This would be handled by the brain tumor agent, analyzing the MRI image.")
+        predicted_mask = AgentConfig.image_analyzer.segment_brain_tumor(image_path)
+
+        if predicted_mask:
+            response = AIMessage(content="Following is the analyzed **segmented** output of the uploaded brain MRI image:")
+        else:
+            response = AIMessage(content="The uploaded image is not clear enough to make a diagnosis / the image is not a medical image.")
 
         return {
             **state,
             "output": response,
-            "needs_human_validation": True,  # Medical diagnosis always needs validation
+            "needs_human_validation": True,
             "agent_name": "BRAIN_TUMOR_AGENT"
         }
     
@@ -688,52 +694,32 @@ def init_agent_state() -> AgentState:
     }
 
 
-def process_query(query: Union[str, Dict], conversation_history: List[BaseMessage] = None) -> str:
+def process_query(query: Union[str, Dict], session_id: str = "default") -> str:
     """
     Process a user query through the agent decision system.
-    
+
     Args:
         query: User input (text string or dict with text and image)
-        conversation_history: Optional list of previous messages, NOT NEEDED ANYMORE since the state saves the conversation history now
-        
+        session_id: Unique session identifier for per-user conversation memory
+
     Returns:
         Response from the appropriate agent
     """
-    # Initialize the graph
     graph = create_agent_graph()
+    thread_config = {"configurable": {"thread_id": session_id}}
 
-    # # Save Graph Flowchart
-    # image_bytes = graph.get_graph().draw_mermaid_png()
-    # decoded = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), -1)
-    # cv2.imwrite("./assets/graph.png", decoded)
-    # print("Graph flowchart saved in assets.")
-    
-    # Initialize state
     state = init_agent_state()
-    # if conversation_history:
-    #     state["messages"] = conversation_history
-    
-    # Add the current query
     state["current_input"] = query
 
-    # To handle image upload case
-    if isinstance(query, dict):
-        query = query.get("text", "") + ", user uploaded an image for diagnosis."
-    
-    state["messages"] = [HumanMessage(content=query)]
+    query_text = query.get("text", "") + ", user uploaded an image for diagnosis." if isinstance(query, dict) else query
+    state["messages"] = [HumanMessage(content=query_text)]
 
-    # result = graph.invoke(state, thread_config)
     result = graph.invoke(state, thread_config)
-    # print("######### DEBUG 4:", result)
-    # state["messages"] = [result["messages"][-1].content]
 
-    # Keep history to reasonable size (ANOTHER OPTION: summarize and store before truncating history)
-    if len(result["messages"]) > config.max_conversation_history:  # Keep last config.max_conversation_history messages
+    if len(result["messages"]) > config.max_conversation_history:
         result["messages"] = result["messages"][-config.max_conversation_history:]
 
-    # visualize conversation history in console
     for m in result["messages"]:
         m.pretty_print()
-    
-    # Add the response to conversation history
+
     return result
