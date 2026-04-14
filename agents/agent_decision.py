@@ -87,7 +87,6 @@ class AgentConfig:
 
 class AgentState(MessagesState):
     """State maintained across the workflow."""
-    messages: List[BaseMessage]  # Conversation history
     agent_name: Optional[str]  # Current active agent
     current_input: Optional[Union[str, Dict]]  # Input to be processed
     has_image: bool  # Whether the current input contains an image
